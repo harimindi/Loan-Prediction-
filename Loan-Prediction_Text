@@ -1,0 +1,77 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+%matplotlib inline
+#from scipy.stats import mode
+
+import seaborn as sb
+
+train = pd.read_csv('C:/Hari Docs/Dataset/Loan_Pred_train.csv')
+train['source'] = 'train'
+test = pd.read_csv('C:/Hari Docs/Dataset\Loan_Pred_test.csv')
+test['source'] = 'test'
+print(train.shape)
+print(test.shape)
+
+df = pd.concat([train, test], ignore_index=True)
+df.shape
+
+df.head()
+
+df.describe()
+
+cat = df.dtypes[df.dtypes == 'object'].index
+df[cat].describe()
+
+df.isnull().sum()
+
+#Filling missing values of Married as 'Yes' where CoapplicantIncome == 0
+miss_loc =(df['Married'].isnull()) & (df['CoapplicantIncome'] == 0)
+print('Before', miss_loc.sum())
+df.loc[miss_loc,'Married'] = df['Married'].fillna('No')
+print('After', df['Married'].isnull().sum())
+
+#Filling last value for Married as Yes because dependents is more than 0
+df['Married'].fillna('Yes', inplace = True)
+
+#Imputing missing values for Gender based on coapplicant income lesser than applicantincome
+miss_loc = ((df['ApplicantIncome'] > df['CoapplicantIncome']) & (df['CoapplicantIncome'] != 0) & (df['Gender'].isnull()))
+print('No. of filled missing Gender ',miss_loc.sum())
+df.loc[miss_loc,'Gender'] = df['Gender'].fillna('Male')
+df['Gender'].isnull().sum()
+
+#Imputing missing values for Gender based on coapplicant income greater than applicantincome
+miss_loc = ((df['ApplicantIncome'] < df['CoapplicantIncome']) & (df['CoapplicantIncome'] != 0) & (df['Gender'].isnull()))
+print('No. of filled missing Gender ',miss_loc.sum())
+df.loc[miss_loc,'Gender'] = df['Gender'].fillna('Female')
+df['Gender'].isnull().sum()
+
+df.to_csv('C:/Hari Docs/Dataset/Loan_Pred_Stage.csv', index= False)
+
+#Remaining missing Gender has coapplicantincome as '0'. Hence imputing the values as Male
+miss_loc_m = ((df['CoapplicantIncome'] ==0) & (df['Gender'].isnull()))
+print (miss_loc_m.sum())
+df.loc[miss_loc_m,'Gender'] = df['Gender'].fillna('Male')
+print(df['Gender'].isnull().sum())
+
+#Imputing Self-Employed
+df['Self_Employed'].value_counts()
+
+#Since majority is No, we will use the same
+df['Self_Employed'].fillna('No', inplace = True)
+df['Self_Employed'].value_counts()
+
+#Imputing Credit History with the assumption 0 = Bad Credit History; 1 = Good Credit History; 2 = No Credit History (blanks)
+#Missing constitutes 8% of total data hence safe to assume th
+print (df['Credit_History'].isnull().sum())
+df['Credit_History'].fillna(2, inplace = True)
+print (df['Credit_History'].isnull().sum())
+
+#Imputing Dependents based on mode of Dependents for Married = Yes and remaining as 
+df.groupby('Education')['Dependents'].agg(lambda x: x.value_counts().index[0])
+
+#By any grouping the mode for dependents seems to be 0. Hence imputing 0 directly.
+print (df['Dependents'].isnull().sum())
+df['Dependents'].fillna(0, inplace = True)
+print (df['Dependents'].isnull().sum())
+

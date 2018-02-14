@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -75,3 +76,91 @@ print (df['Dependents'].isnull().sum())
 df['Dependents'].fillna(0, inplace = True)
 print (df['Dependents'].isnull().sum())
 
+df['Loan_Amount_Term'].value_counts()
+
+#Classifying the Loan amount terms which is in months into years and grouping them as 10, 20, 30 and 40yrs respectively
+df['Loan_Amount_Term'] = pd.cut(df['Loan_Amount_Term'], (6, 120, 240, 360, 480), labels=[10,20,30,40], include_lowest=True)
+df['Loan_Amount_Term'].value_counts()
+
+df = df.drop(['test_term'], axis=1)
+df.columns
+
+#2 rows of applicant income is 0, hence taking mean of applicant income and imputing them.
+df['ApplicantIncome'].replace(0,df['ApplicantIncome'].mean(), inplace = True)
+
+#Adding new column TotalIncome by adding ApplicantIncome and CoapplicantIncome
+df['TotalIncome'] = df['ApplicantIncome'] + df['CoapplicantIncome']
+
+sb.distplot(df['TotalIncome'], bins = 5000)
+
+sb.barplot(x = 'Loan_Amount_Term', y = 'LoanAmount', data=df)
+
+#Imputing Loan term based on mode.
+mode = df['Loan_Amount_Term'].mode().iloc[0]
+df['Loan_Amount_Term'].isnull().sum()
+df['Loan_Amount_Term'].fillna(mode, inplace = True) 
+df['Loan_Amount_Term'].isnull().sum()
+
+#Building a Linear Regression model to fill predict LoanAmount values and fill the missing values.
+#Creating a new dataframe for the same
+df_la = df.iloc[:,[2,3,4,5,6,7,10,11,12,14]]
+df_la.head()
+
+from sklearn.preprocessing import LabelEncoder
+lc = LabelEncoder()
+
+#Label encoding
+conv = ['Credit_History','Dependents','Education','Gender','Loan_Amount_Term','Married','Property_Area','Self_Employed']
+for i in conv:
+    df_la[i] = lc.fit_transform(df_la[i])
+
+df_la.info()
+
+df_la.to_csv('C:/Hari Docs/Dataset/Loan_Pred_Stage_1.csv', index= False)
+df_la = pd.read_csv('C:/Hari Docs/Dataset/Loan_Pred_Stage_1.csv')
+
+#One hot encoding
+df_la = pd.get_dummies(df_la, columns=conv)
+df_la.dtypes
+
+df_la_test = df_la[(df_la['LoanAmount'].isnull())]
+df_la_train = df_la[(df_la['LoanAmount'].notnull())]
+print(df_la_test.shape, df_la_train.shape)
+
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.tree import DecisionTreeRegressor
+from sklearn import cross_validation, metrics
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from math import sqrt
+
+X = df_la_train.iloc[:,1:]
+y = df_la_train['LoanAmount']
+print(X.shape, y.shape)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+print (X_train.shape, y_train.shape)
+print (X_test.shape, y_test.shape)
+
+lin_reg = LinearRegression(normalize=True)
+model = lin_reg.fit(X_train, y_train)
+conf = lin_reg.score(X_test, y_test)
+print(conf)
+
+predict = lin_reg.predict(X_test)
+
+plt.scatter(y_test, predict)
+plt.xlabel('True Values')
+plt.ylabel('Predictions')
+
+#Final prediction of empty LoanAmount values
+print('Null values Before: ', df_la_test['LoanAmount'].isnull().sum())
+X_final = df_la_test.iloc[:,1:]
+df_la_test['LoanAmount'] = lin_reg.predict(X_final)
+print('Null values After: ', df_la_test['LoanAmount'].isnull().sum())
+
+df = pd.concat([df_la_train, df_la_test])
+print (df_la_train.shape, df_la_test.shape, df.shape)
+
+df.isnull().sum()
